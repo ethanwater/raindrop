@@ -73,6 +73,7 @@ func addTask(task string) error {
 	}
 
 	updateTodo()
+	fmt.Printf("[todo] added '%s' to tasks\n", task)
 	return nil
 }
 
@@ -86,7 +87,9 @@ func removeTask(taskID int) {
 		fmt.Println("notice: taskID invalid")
 		return
 	}
+	removedTask := tasks[taskID-1]
 	tasks = append(tasks[:taskID-1], tasks[taskID:]...)
+	fmt.Printf("[todo] removed '%s' from tasks\n", removedTask)
 	updateTodo()
 }
 
@@ -101,11 +104,11 @@ func clearTodo() error {
 
 func displayTasks() {
 	fetchTasks()
-	fmt.Println("todo:")
 	for index, task := range tasks {
 		fmt.Printf("[%d]: %s\n", index+1, task)
 	}
 }
+
 
 func main() {
 	app := &cli.App{
@@ -121,7 +124,8 @@ func main() {
 				Aliases: []string{"+"},
 				Usage:   "add a task",
 				Action: func(cCtx *cli.Context) error {
-					addTask(cCtx.Args().Get(0))
+					input := cCtx.Args().Get(0)
+					addTask(input)
 					return nil
 				},
 			},

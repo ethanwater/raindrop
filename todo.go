@@ -9,11 +9,10 @@ import (
 
 	"github.com/urfave/cli/v2"
 )
-
 var tasks []string
+var urgent []string
 
 const todoFile string = "/Users/ethan/.todo"
-
 func fetchTasks() error {
 	file, err := os.Open(todoFile)
 	if err != nil {
@@ -21,7 +20,7 @@ func fetchTasks() error {
 	}
 	defer file.Close()
 
-	data := make([]byte, 100)
+	data := make([]byte, 1000)
 	_, err = file.Read(data)
 	if err != nil {
 		log.Fatal(err)
@@ -30,9 +29,15 @@ func fetchTasks() error {
 	filter := func(arr []string, fn func(string) bool) []string {
 		var result []string
 		for _, v := range arr {
-			if fn(v) {
-				result = append(result, v)
-			}
+				switch{
+				case len(v) < 1:
+					continue
+				default:
+					result = append(result, v)
+				}
+				if strings.HasSuffix(v, "!") {
+					urgent = append(urgent, v)
+				}
 		}
 
 		return result[:len(result)-1]
@@ -104,9 +109,27 @@ func clearTodo() error {
 
 func displayTasks() {
 	fetchTasks()
-	for index, task := range tasks {
-		fmt.Printf("[%d]: %s\n", index+1, task)
+	if len(urgent) > 0 {
+		fmt.Println("URGENT")
+		for index, task := range tasks {
+			if strings.HasSuffix(task, "!") {
+				fmt.Printf("[%d]: %s\n", index+1, task[:len(task)-1])
+			}
+		}
+		fmt.Println("")
 	}
+
+	if len(tasks) > 0 {
+		fmt.Println("MISC:")
+		for index, task := range tasks {
+			if !strings.HasSuffix(task, "!") {
+				fmt.Printf("[%d]: %s\n", index+1, task)
+			}
+		}
+		return
+	} 
+
+	fmt.Printf("Nothing in Todo\n")
 }
 
 
@@ -131,7 +154,7 @@ func main() {
 			},
 			{
 				Name:    "rm",
-				Aliases: []string{"-"},
+				Aliases: []string{"-", "remove"},
 				Usage:   "remove a task",
 				Action: func(cCtx *cli.Context) error {
 					input, err := strconv.Atoi(cCtx.Args().Get(0))

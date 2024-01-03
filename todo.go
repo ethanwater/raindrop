@@ -7,12 +7,17 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/TwiN/go-color"
 	"github.com/urfave/cli/v2"
 )
-var tasks []string
-var urgent []string
+
+var (
+	tasks []string
+	urgent []string
+)
 
 const todoFile string = "/Users/ethan/.todo"
+
 func fetchTasks() error {
 	file, err := os.Open(todoFile)
 	if err != nil {
@@ -29,15 +34,15 @@ func fetchTasks() error {
 	filter := func(arr []string, fn func(string) bool) []string {
 		var result []string
 		for _, v := range arr {
-				switch{
-				case len(v) < 1:
-					continue
-				default:
-					result = append(result, v)
-				}
-				if strings.HasSuffix(v, "!") {
-					urgent = append(urgent, v)
-				}
+			switch {
+			case len(v) < 1:
+				continue
+			default:
+				result = append(result, v)
+			}
+			if strings.HasSuffix(v, "!") {
+				urgent = append(urgent, v)
+			}
 		}
 
 		return result[:len(result)-1]
@@ -64,7 +69,9 @@ func updateTodo() error {
 
 func addTask(task string) error {
 	fetchTasks()
-	contains := func(arr []string, value string) bool {
+	
+	var ifTaskExists func([]string, string) bool
+	ifTaskExists = func(arr []string, value string) bool {
 		for _, v := range arr {
 			if v == value {
 				return true
@@ -73,29 +80,62 @@ func addTask(task string) error {
 		return false
 	}
 
-	if !contains(tasks, task) {
+	if !ifTaskExists(tasks, task) {
 		tasks = append(tasks, task)
+	} else {
+		fmt.Printf("notice: %s already exists\n", task)
 	}
 
 	updateTodo()
-	fmt.Printf("[todo] added '%s' to tasks\n", task)
+	fmt.Printf("[todo] added '%s' to tasks as [%d]\n", task, len(tasks))
 	return nil
 }
 
 func removeTask(taskID int) {
 	fetchTasks()
-	if len(tasks) == 1 {
-		fmt.Println("notice: to remove last element use clear")
+	switch{
+	case len(tasks) == 1:
+		fmt.Println("notice: to remove all elements use clear")
+		return
+	case taskID > len(tasks):
+		fmt.Println("notice: taskID invalid")
 		return
 	}
+	
+	removedTask := tasks[taskID-1]
+	tasks = append(tasks[:taskID-1], tasks[taskID:]...)
+
+	updateTodo()
+	fmt.Printf("[todo] removed '%s' from tasks\n", removedTask)
+	return
+}
+
+func editTask(taskID int, newTask string) {
+	fetchTasks()
 	if taskID > len(tasks) {
 		fmt.Println("notice: taskID invalid")
 		return
 	}
-	removedTask := tasks[taskID-1]
-	tasks = append(tasks[:taskID-1], tasks[taskID:]...)
-	fmt.Printf("[todo] removed '%s' from tasks\n", removedTask)
+	originalTask := tasks[taskID-1]
+	tasks[taskID-1] = newTask
+
 	updateTodo()
+	fmt.Printf("[todo] edited '%s' -> '%s'\n", originalTask, newTask)
+	return
+}
+
+func doneTask(taskID int) {
+	fetchTasks()
+	if taskID > len(tasks) {
+		fmt.Println("notice: taskID invalid")
+		return
+	}
+	originalTask := tasks[taskID-1]
+	completeTask := originalTask + "+"
+	tasks[taskID-1] = completeTask
+	fmt.Printf("[todo] '%s' done\n", originalTask)
+	updateTodo()
+	return
 }
 
 func clearTodo() error {
@@ -109,8 +149,13 @@ func clearTodo() error {
 
 func displayTasks() {
 	fetchTasks()
+	if len(tasks) <= 0 {
+		fmt.Printf("Nothing in Todo\n")
+		return
+	}
+
 	if len(urgent) > 0 {
-		fmt.Println("URGENT")
+		fmt.Println(color.Ize(color.Red, "URGENT"))
 		for index, task := range tasks {
 			if strings.HasSuffix(task, "!") {
 				fmt.Printf("[%d]: %s\n", index+1, task[:len(task)-1])
@@ -119,19 +164,24 @@ func displayTasks() {
 		fmt.Println("")
 	}
 
-	if len(tasks) > 0 {
-		fmt.Println("MISC:")
-		for index, task := range tasks {
-			if !strings.HasSuffix(task, "!") {
-				fmt.Printf("[%d]: %s\n", index+1, task)
-			}
+	fmt.Println(color.Ize(color.Blue, "MISC:"))
+	for index, task := range tasks {
+		if !strings.HasSuffix(task, "!") && !strings.HasSuffix(task, "+") {
+			fmt.Printf("[%d]: %s\n", index+1, task)
 		}
-		return
-	} 
+	}
+	fmt.Println("")
 
-	fmt.Printf("Nothing in Todo\n")
+	fmt.Println(color.Ize(color.Green, "DONE:"))
+	for index, task := range tasks {
+		if strings.HasSuffix(task, "+") {
+			s := fmt.Sprintf("[%d]: %s\n", index+1, task)
+			fmt.Print(color.Ize(color.Green, s))
+		}
+	}
+	return
+
 }
-
 
 func main() {
 	app := &cli.App{
@@ -162,6 +212,33 @@ func main() {
 						return err
 					}
 					removeTask(input)
+
+					return nil
+				},
+			},
+			{
+				Name:  "done",
+				Usage: "complete a task",
+				Action: func(cCtx *cli.Context) error {
+					input, err := strconv.Atoi(cCtx.Args().Get(0))
+					if err != nil {
+						return err
+					}
+					doneTask(input)
+
+					return nil
+				},
+			},
+			{
+				Name:  "edit",
+				Usage: "edit task",
+				Action: func(cCtx *cli.Context) error {
+					id, err := strconv.Atoi(cCtx.Args().Get(0))
+					if err != nil {
+						return err
+					}
+					newTask := cCtx.Args().Get(1)
+					editTask(id, newTask)
 
 					return nil
 				},

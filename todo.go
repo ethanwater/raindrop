@@ -13,7 +13,6 @@ import (
 
 var (
 	tasks []string
-	urgent []string
 )
 
 const todoFile string = "/Users/ethan/.todo"
@@ -40,9 +39,7 @@ func fetchTasks() error {
 			default:
 				result = append(result, v)
 			}
-			if strings.HasSuffix(v, "!") {
-				urgent = append(urgent, v)
-			}
+
 		}
 
 		return result[:len(result)-1]
@@ -56,9 +53,14 @@ func fetchTasks() error {
 
 func updateTodo() error {
 	var newContent strings.Builder
-	for _, task := range tasks {
-		fmt.Fprintf(&newContent, "%s\n", task)
+	if len(tasks) < 1 {
+		fmt.Fprintf(&newContent, "\n")
+	} else {
+		for _, task := range tasks {
+			fmt.Fprintf(&newContent, "%s\n", task)
+		}
 	}
+	
 	err := os.WriteFile(todoFile, []byte(newContent.String()), 0644)
 	if err != nil {
 		log.Fatal(err)
@@ -69,7 +71,7 @@ func updateTodo() error {
 
 func addTask(task string) error {
 	fetchTasks()
-	
+
 	var ifTaskExists func([]string, string) bool
 	ifTaskExists = func(arr []string, value string) bool {
 		for _, v := range arr {
@@ -93,7 +95,7 @@ func addTask(task string) error {
 
 func removeTask(taskID int) {
 	fetchTasks()
-	switch{
+	switch {
 	case len(tasks) == 1:
 		fmt.Println("notice: to remove all elements use clear")
 		return
@@ -101,7 +103,7 @@ func removeTask(taskID int) {
 		fmt.Println("notice: taskID invalid")
 		return
 	}
-	
+
 	removedTask := tasks[taskID-1]
 	tasks = append(tasks[:taskID-1], tasks[taskID:]...)
 
@@ -138,12 +140,42 @@ func doneTask(taskID int) {
 	return
 }
 
-func clearTodo() error {
-	err := os.WriteFile(todoFile, []byte("\n"), 0644)
-	if err != nil {
-		return err
+func clearTodo(sec string) error {
+	fetchTasks()
+	var filteredTasks []string
+	switch sec {
+	case "all":
+		err := os.WriteFile(todoFile, []byte("\n"), 0644)
+		if err != nil {
+			return err
+		}
+		break
+	case "done":
+		for _, task := range tasks {
+			if !strings.HasSuffix(task, "+") {
+				filteredTasks = append(filteredTasks, task)
+			}
+		}
+		break
+	case "urgent":
+		for _, task := range tasks {
+			if !strings.HasSuffix(task, "!") {
+				filteredTasks = append(filteredTasks, task)
+			}
+		}
+		break
+	case "misc":
+		for _, task := range tasks {
+			if strings.HasSuffix(task, "!") || strings.HasSuffix(task, "+") {
+				filteredTasks = append(filteredTasks, task)
+			}
+		}
+		break
+	default:
+		break
 	}
-
+	tasks = filteredTasks
+	updateTodo()
 	return nil
 }
 
@@ -154,25 +186,19 @@ func displayTasks() {
 		return
 	}
 
-	if len(urgent) > 0 {
-		fmt.Println(color.Ize(color.Red, "URGENT"))
-		for index, task := range tasks {
-			if strings.HasSuffix(task, "!") {
-				fmt.Printf("[%d]: %s\n", index+1, task[:len(task)-1])
-			}
+	fmt.Println("\n", color.Ize(color.Red, "URGENT"))
+	for index, task := range tasks {
+		if strings.HasSuffix(task, "!") {
+			fmt.Printf("[%d]: %s\n", index+1, task[:len(task)-1])
 		}
-		fmt.Println("")
 	}
-
-	fmt.Println(color.Ize(color.Blue, "MISC:"))
+	fmt.Println("\n", color.Ize(color.Blue, "MISC:"))
 	for index, task := range tasks {
 		if !strings.HasSuffix(task, "!") && !strings.HasSuffix(task, "+") {
 			fmt.Printf("[%d]: %s\n", index+1, task)
 		}
 	}
-	fmt.Println("")
-
-	fmt.Println(color.Ize(color.Green, "DONE:"))
+	fmt.Println("\n", color.Ize(color.Green, "DONE:"))
 	for index, task := range tasks {
 		if strings.HasSuffix(task, "+") {
 			s := fmt.Sprintf("[%d]: %s\n", index+1, task)
@@ -246,8 +272,9 @@ func main() {
 			{
 				Name:  "clear",
 				Usage: "clear todo list",
-				Action: func(*cli.Context) error {
-					clearTodo()
+				Action: func(cCtx *cli.Context) error {
+					sec := cCtx.Args().Get(0)
+					clearTodo(sec)
 					return nil
 				},
 			},

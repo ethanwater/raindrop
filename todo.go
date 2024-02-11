@@ -186,27 +186,48 @@ func displayTasks() {
 		return
 	}
 
-	fmt.Println("\n", color.Ize(color.Red, "URGENT"))
-	for index, task := range tasks {
-		if strings.HasSuffix(task, "!") {
-			fmt.Printf("[%d]: %s\n", index+1, task[:len(task)-1])
+	urge	:= make(map[int]string) 
+	misc	:= make(map[int]string)	
+	done	:= make(map[int]string)
+
+		for index, task := range tasks {
+			if strings.HasSuffix(task, "!") {
+				urge[index+1] = task[:len(task)-1]
+				continue
+			}
+			if !strings.HasSuffix(task, "!") && !strings.HasSuffix(task, "+") {
+				misc[index+1] = task
+				continue
+			}
+			if strings.HasSuffix(task, "+") {
+				done[index+1] = task[:len(task)-1]
+				continue
+			}
+		}
+
+
+	
+	if len(urge) > 0 {
+		fmt.Println("\n", color.Ize(color.Red, "URGENT"))
+		for id, task := range urge {
+			fmt.Printf("[%d]: %s\n", id, task)
 		}
 	}
-	fmt.Println("\n", color.Ize(color.Blue, "MISC:"))
-	for index, task := range tasks {
-		if !strings.HasSuffix(task, "!") && !strings.HasSuffix(task, "+") {
-			fmt.Printf("[%d]: %s\n", index+1, task)
+
+	if len(misc) > 0 {
+		fmt.Println("\n", color.Ize(color.Blue, "MISC:"))
+		for id, task := range misc {
+			fmt.Printf("[%d]: %s\n", id, task)
 		}
 	}
-	fmt.Println("\n", color.Ize(color.Green, "DONE:"))
-	for index, task := range tasks {
-		if strings.HasSuffix(task, "+") {
-			s := fmt.Sprintf("[%d]: %s\n", index+1, task)
+
+	if len(done) > 0 {
+		fmt.Println("\n", color.Ize(color.Green, "DONE:"))
+		for id, task := range done {
+			s := fmt.Sprintf("[%d]: %s\n", id, task)
 			fmt.Print(color.Ize(color.Green, s))
 		}
 	}
-	return
-
 }
 
 func main() {

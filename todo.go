@@ -208,21 +208,21 @@ func displayTasks() {
 
 	
 	if len(urge) > 0 {
-		fmt.Println("\n", color.Ize(color.Red, "URGENT"))
+		fmt.Println(color.Ize(color.Red, "URGENT"))
 		for id, task := range urge {
 			fmt.Printf("[%d]: %s\n", id, task)
 		}
 	}
 
 	if len(misc) > 0 {
-		fmt.Println("\n", color.Ize(color.Blue, "MISC:"))
+		fmt.Println(color.Ize(color.Blue, "MISC:"))
 		for id, task := range misc {
 			fmt.Printf("[%d]: %s\n", id, task)
 		}
 	}
 
 	if len(done) > 0 {
-		fmt.Println("\n", color.Ize(color.Green, "DONE:"))
+		fmt.Println(color.Ize(color.Green, "DONE:"))
 		for id, task := range done {
 			s := fmt.Sprintf("[%d]: %s\n", id, task)
 			fmt.Print(color.Ize(color.Green, s))
